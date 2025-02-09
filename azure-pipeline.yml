@@ -3,7 +3,7 @@ trigger:
 
 variables:
   # Azure Resource Manager connection created during pipeline creation
-  azureServiceConnectionId: '3628fe7b-e12c-44c5-b50a-18091ffaa7b9'
+  azureServiceConnectionId: 'b8214d69-c798-4ef3-88fc-9755a4d9e479'
 
   # Web app name
   webAppName: 'realtimemarket'
@@ -14,10 +14,10 @@ variables:
   # Environment name
   environmentName: 'realtimemarket'
 
-  # Project root folder
+  # Project root folder. Point to the folder containing manage.py file.
   projectRoot: $(System.DefaultWorkingDirectory)
 
-  pythonVersion: '3.9'  # Use the Python version supported by Azure Web App
+  pythonVersion: '3.9'
 
 stages:
 - stage: Build

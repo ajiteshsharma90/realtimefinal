@@ -14,7 +14,8 @@ from stock_data import (
     calculate_metrics,
     add_technical_indicators
 )
-from forecasting import forecast_pct_change
+from forecasting import forecast_pct_change 
+from forecasting import get_suggestions
 
 # Set page configuration
 st.set_page_config(layout="wide", page_title="Real Time Stock & Stock Forecast Dashboard")
@@ -50,7 +51,7 @@ if app_mode == "Real Time Stock Dashboard":
             st.session_state.update_chart = False
 
     # Auto-refresh every 60 seconds
-    st_autorefresh(interval=60000, key="real_time_data_refresh")
+    st_autorefresh(interval=6000, key="real_time_data_refresh")
 
     if st.session_state.update_chart:
         data = fetch_stock_data(ticker, time_period, interval_mapping[time_period])
@@ -116,7 +117,7 @@ if app_mode == "Real Time Stock Dashboard":
 
     # Sidebar: Real-Time Stock Prices for selected symbols
     st.sidebar.header("Real-Time Stock Prices")
-    stock_symbols = ["HDFC Bank", "HDFC Bank", "State Bank of India"]
+    stock_symbols = ["HDFC Bank", "ICICI Bank", "State Bank of India"]
     for symbol in stock_symbols:
         tick_sym = nifty_50_dict[symbol]
         rt_data = yf.download(tick_sym, period='1d', interval='1m')
@@ -148,45 +149,53 @@ if app_mode == "Real Time Stock Dashboard":
     )
     
 elif app_mode == "Stock Forecast":
-    st.title("Stock Forecast: 3-Day Percentage Change Forecast")
+    st.title("Stock Forecasting")
+    
     company_name = st.sidebar.selectbox("Select Company", list(nifty_50_dict.keys()))
     ticker_forecast = nifty_50_dict[company_name]
     forecast_option = st.sidebar.selectbox("Number of Days to Forecast", [3, 5, 10], index=0)
     period_options = st.sidebar.selectbox("Historical Data Period", ["1y", "2y", "5y"], index=0)
+
     run_button = st.sidebar.button("Run Forecast")
+
     if run_button:
         forecast_future = forecast_pct_change(ticker_forecast, forecast_days=forecast_option, period=period_options)
+        
         if forecast_future is not None:
             display_forecast = forecast_future[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].rename(
-                columns={
-                    'ds': 'Date',
-                    'yhat': '% Change',
-                    'yhat_lower': 'Lower Bound',
-                    'yhat_upper': 'Upper Bound'
-                }
-            )
-            display_forecast = display_forecast.reset_index(drop=True)
+                columns={'ds': 'Date', 'yhat': '% Change', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'}
+            ).reset_index(drop=True)
             display_forecast.index += 1
-            st.subheader(f"Forecasted Percentage Change for Next {forecast_option} Days")
-            st.dataframe(display_forecast)
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=forecast_future['ds'],
-                y=forecast_future['yhat'],
-                mode='lines+markers',
-                name='Forecasted Pct Change',
-                error_y=dict(
-                    type='data',
-                    symmetric=False,
-                    array=forecast_future['yhat_upper'] - forecast_future['yhat'],
-                    arrayminus=forecast_future['yhat'] - forecast_future['yhat_lower']
-                )
-            ))
-            fig.update_layout(
-                title=f"Forecast of {company_name} Percentage Change",
-                xaxis_title="Date",
-                yaxis_title="Percentage Change (%)"
+            
+            # Store the forecasted data in session state
+            st.session_state["forecast_data"] = display_forecast
+            st.session_state["forecast_plot"] = forecast_future  # Store raw forecast for plotting
+            
+    # Check if forecast data exists in session state before displaying
+    if "forecast_data" in st.session_state:
+        st.subheader(f"Forecasted Percentage Change for Next {forecast_option} Days")
+        st.dataframe(st.session_state["forecast_data"])
+
+        # Plot the stored forecast data
+        fig = go.Figure()
+        forecast_future = st.session_state["forecast_plot"]
+        fig.add_trace(go.Scatter(
+            x=forecast_future['ds'], y=forecast_future['yhat'],
+            mode='lines+markers', name='Forecasted Pct Change',
+            error_y=dict(
+                type='data', symmetric=False,
+                array=forecast_future['yhat_upper'] - forecast_future['yhat'],
+                arrayminus=forecast_future['yhat'] - forecast_future['yhat_lower']
             )
-            st.plotly_chart(fig)
-        else:
-            st.error("Forecast could not be generated. Please check the ticker and try again.")
+        ))
+        fig.update_layout(title=f"Forecast of {company_name} Percentage Change", xaxis_title="Date", yaxis_title="Percentage Change (%)")
+        st.plotly_chart(fig)
+
+    # **Keep "Get Suggestions" Separate to Avoid Page Refresh**
+    if st.button("Get Suggestions"):
+        with st.spinner("Fetching suggestions..."):
+            ans = get_suggestions(ticker_forecast, period=period_options)
+        st.subheader("A.I Suggestions:")
+        st.write(ans)
+        
+
