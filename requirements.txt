@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+yfinance
+plotly
+prophet
+ta
+pytz
+streamlit-autorefresh
+gunicorn
