@@ -9,6 +9,7 @@ import requests
 import io
 import numpy as np
 import base64
+import os
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data_daily(ticker, period="1y"):
@@ -80,9 +81,13 @@ def get_suggestions(ticker, period="1y"):
     image = Image.open(io.BytesIO(image_bytes))
 
     # Initialize the Gemini client
-    api_key = st.secrets['api_key']  
+    api_key = os.getenv('API_KEY')  # Get the API key from environment variables
+    if not api_key:
+        st.error("API key not found. Please set the API_KEY environment variable.")
+        return None
+
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash') 
+    model = genai.GenerativeModel('gemini-2.0-flash')
 
     prompt = '''You are a seasoned financial analyst with over 15 years of experience in trading and technical analysis. You possess deep insights into market trends and the ability to interpret complex financial data, making you an expert at providing actionable trading suggestions based on chart analysis.
 Your task is to analyze a provided chart that displays percentage change over time and offer trading suggestions. 
